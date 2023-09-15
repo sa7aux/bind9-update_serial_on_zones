@@ -1,0 +1,41 @@
+#!/usr/bin/bash 
+
+function upzone {
+	set -euo pipefail
+	
+	: ${1?"Usage: $0 <zone file>"}
+
+	IFILE=$1
+
+	if [ ! -w "${IFILE}" ]; then
+	    echo "Error cannot write to ${IFILE}"
+	    exit
+	fi
+
+	if [ ! -w $(pwd) ]; then
+	    echo "Error, sed needs write permission for temp file, add w to current directory"
+	    exit
+	fi
+
+	PREV_SERIAL=$(grep -i Serial "${IFILE}" | awk '{print $1}')
+	TODAY=$(date +%Y%m%d00)
+
+	if [ "$PREV_SERIAL" -ge "${TODAY}" ]; then
+	    NEW_SERIAL=$((PREV_SERIAL+1))
+	else
+	    NEW_SERIAL=${TODAY}
+
+	fi
+	sed -i "s/${PREV_SERIAL}/${NEW_SERIAL}/" "${IFILE}"
+
+	printf "Zone: %s [%d -> %d]\n" "${IFILE}" "${PREV_SERIAL}" "${NEW_SERIAL}"
+}
+
+FILES="*local"
+for f in $FILES
+do
+  # take action on each file. $f store current file name
+  upzone "$f"
+done
+
+systemctl restart bind9
